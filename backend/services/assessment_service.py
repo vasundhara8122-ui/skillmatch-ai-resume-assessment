@@ -564,6 +564,10 @@ def create_assessment_for_candidate(candidate_id: int, skills: list[str], degree
         logger.info("Difficulty: %s", difficulty)
 
         validation_error = _validate_question_availability(conn, level)
+        logger.info("Question availability for %s: %s", level, {
+        qtype: _count_questions(conn, qtype, level)
+        for qtype in QUESTION_DISTRIBUTION
+})
         if validation_error:
             raise ValueError(f"{validation_error['error']} - {validation_error['details']}")
 
