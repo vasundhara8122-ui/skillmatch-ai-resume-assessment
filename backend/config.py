@@ -6,14 +6,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 FRONTEND_DIR = BASE_DIR / "frontend"
-# Vercel uses a read-only filesystem except for /tmp
-if os.getenv("VERCEL") == "1":
+
+# Vercel has a read-only filesystem except for /tmp
+if os.getenv("VERCEL"):
     UPLOAD_DIR = Path("/tmp/uploads")
 else:
     UPLOAD_DIR = BASE_DIR / "uploads"
 
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-
 DB_HOST = os.getenv("DB_HOST", "")
 DB_PORT = int(os.getenv("DB_PORT", "3306"))
 DB_USER = os.getenv("DB_USER", "")
