@@ -13,6 +13,20 @@ from backend.database import get_db_connection
 def is_smtp_configured() -> bool:
     return bool(EMAIL_HOST and EMAIL_USERNAME and EMAIL_PASSWORD)
 
+def get_smtp_missing_config() -> list[str]:
+    missing = []
+
+    if not EMAIL_HOST:
+        missing.append("EMAIL_HOST")
+
+    if not EMAIL_USERNAME:
+        missing.append("EMAIL_USERNAME")
+
+    if not EMAIL_PASSWORD:
+        missing.append("EMAIL_PASSWORD")
+
+    return missing
+
 
 def generate_password(length: int = 10) -> str:
     alphabet = string.ascii_letters + string.digits
@@ -89,7 +103,7 @@ SkillMatch AI
 
         return {
             "success": True,
-            "message": f"Demo mode: Email not sent (SMTP not configured). Assessment link and password have been generated.",
+            "message": f"SMTP DEBUG - HOST={bool(EMAIL_HOST)}, USERNAME={bool(EMAIL_USERNAME)}, PASSWORD={bool(EMAIL_PASSWORD)}",
             "actually_sent": False,
             "demo_mode": True,
             "assessment_link": assessment_link,
