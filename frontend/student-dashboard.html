@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Dashboard - SkillMatch AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/index.html" class="logo">SkillMatch<span> AI</span></a>
+      <div class="nav-links">
+        <a href="#" onclick="logout('student')">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dashboard-header">
+    <div class="container">
+      <h1 id="welcomeTitle">Student Dashboard</h1>
+      <p id="welcomeSubtitle">Your assigned assessments and results</p>
+    </div>
+  </div>
+
+  <div class="container" style="padding-top:32px;" id="dashboardContent">
+    <div class="alert alert-info"><span class="loading"></span> Loading...</div>
+  </div>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    const session = checkStudentAuth();
+    const candidateId = getQueryParam('candidate_id') || (session && session.candidate_id);
+
+    async function loadDashboard() {
+      if (!candidateId) {
+        document.getElementById('dashboardContent').innerHTML = '<div class="alert alert-error">No candidate profile found. Please contact HR.</div>';
+        return;
+      }
+
+      try {
+        const data = await apiCall(`/api/candidate/${candidateId}`);
+        renderDashboard(data);
+      } catch (err) {
+        document.getElementById('dashboardContent').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      }
+    }
+
+    function renderDashboard(data) {
+      const c = data.candidate;
+      document.getElementById('welcomeTitle').textContent = `Hello, ${c.name}`;
+      document.getElementById('welcomeSubtitle').textContent = c.email;
+
+      let html = '';
+      const skills = data.skills || [];
+
+      if (skills.length > 0) {
+        html += `<div class="card mb-4"><h3 class="mb-2">Detected Skills from Resume</h3><div>${skills.map(s => `<span class="skill-tag">${s.name || s}</span>`).join('')}</div></div>`;
+      }
+
+      if (data.assessment_id) {
+        if (data.assessment_status === 'completed') {
+          html += `
+            <div class="card text-center mb-4">
+              <h3>Assessment Completed</h3>
+              <p style="color:var(--text-muted);margin:16px 0;">You have completed your assessment. View your results below.</p>
+              <a href="/result.html?assessment_id=${data.assessment_id}" class="btn btn-primary btn-lg">View My Results</a>
+            </div>
+          `;
+        } else {
+          html += `
+            <div class="card text-center mb-4">
+              <h3>Assessment Ready</h3>
+              <p style="color:var(--text-muted);margin:16px 0;">Your technical assessment is ready. Click below to begin.</p>
+              <p><strong>Level:</strong> <span class="badge badge-info">${c.level} - ${c.level === 'Level 1' ? 'Medium' : 'Hard'}</span></p>
+              <a href="/assessment.html?assessment_id=${data.assessment_id}" class="btn btn-primary btn-lg mt-2">Start Assessment</a>
+            </div>
+          `;
+        }
+      } else {
+        html += '<div class="card text-center"><p style="color:var(--text-muted)">No assessment assigned yet. Please contact HR.</p></div>';
+      }
+
+      document.getElementById('dashboardContent').innerHTML = html;
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

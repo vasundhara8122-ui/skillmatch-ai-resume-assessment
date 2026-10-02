@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assessment Invitation - SkillMatch AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/index.html" class="logo">SkillMatch<span> AI</span></a>
+      <div class="nav-links">
+        <a href="/company-dashboard.html">Dashboard</a>
+        <a href="#" onclick="logout('company')">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="login-page">
+    <div class="card text-center" style="max-width:640px;">
+      <div style="font-size:4rem;margin-bottom:16px;">✉️</div>
+      <h2 id="inviteTitle">Assessment Invitation</h2>
+      <p style="color:var(--text-muted);margin:16px 0;" id="emailStatus"></p>
+
+      <div id="candidateInfo" class="alert alert-info" style="text-align:left;margin:24px 0;display:none;">
+      </div>
+
+      <div style="display:flex;gap:12px;justify-content:center;margin-top:24px;flex-wrap:wrap;">
+        <a href="/company-dashboard.html" class="btn btn-secondary">Back to Dashboard</a>
+        <a id="reportLink" href="#" class="btn btn-secondary" style="display:none;">View Report</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    checkCompanyAuth();
+    const candidateId = getQueryParam('candidate_id');
+    const emailResult = getSession('lastEmailResult');
+
+    const titleEl = document.getElementById('inviteTitle');
+    const statusEl = document.getElementById('emailStatus');
+    const infoEl = document.getElementById('candidateInfo');
+
+    if (emailResult) {
+      if (emailResult.success && emailResult.actually_sent) {
+        titleEl.textContent = 'Assessment Invitation Sent Successfully';
+        statusEl.textContent = emailResult.message || 'The candidate will receive an email with a link to take the assessment.';
+
+        if (emailResult.candidate && emailResult.assessment) {
+          infoEl.style.display = 'block';
+          infoEl.innerHTML = `
+            <strong>Candidate:</strong> ${emailResult.candidate.name}<br>
+            <strong>Email:</strong> ${emailResult.candidate.email}<br>
+            <strong>Assessment:</strong> ${emailResult.assessment.level} - ${emailResult.assessment.level === 'Level 1' ? 'Medium' : 'Hard'}
+          `;
+        }
+      } else {
+        titleEl.textContent = 'Email Not Sent';
+        statusEl.textContent = emailResult.message || 'Email service is not configured. Please set up SMTP environment variables.';
+
+        if (emailResult.candidate) {
+          infoEl.style.display = 'block';
+          infoEl.className = 'alert alert-error';
+          infoEl.innerHTML = `
+            <strong>Candidate:</strong> ${emailResult.candidate.name}<br>
+            <strong>Email:</strong> ${emailResult.candidate.email}
+          `;
+        }
+      }
+    } else {
+      titleEl.textContent = 'No Invitation Data';
+      statusEl.textContent = 'No invitation information found. Please send an invitation from the assessment preview page.';
+    }
+
+    if (candidateId) {
+      const reportLink = document.getElementById('reportLink');
+      reportLink.href = `/company-report.html?candidate_id=${candidateId}`;
+      reportLink.style.display = 'inline-flex';
+    }
+
+    clearSession('lastEmailResult');
+  </script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HR Candidate Report - SkillMatch AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/index.html" class="logo">SkillMatch<span> AI</span></a>
+      <div class="nav-links">
+        <a href="/company-dashboard.html">Dashboard</a>
+        <a href="#" onclick="logout('company')">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dashboard-header">
+    <div class="container">
+      <h1>Candidate Assessment Report</h1>
+      <p>Detailed skill analysis and assessment results</p>
+    </div>
+  </div>
+
+  <div class="container" style="padding-top:32px;padding-bottom:64px;" id="reportContent">
+    <div class="alert alert-info"><span class="loading"></span> Loading report...</div>
+  </div>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    checkCompanyAuth();
+    const candidateId = getQueryParam('candidate_id');
+
+    async function loadReport() {
+      if (!candidateId) {
+        document.getElementById('reportContent').innerHTML = '<div class="alert alert-error">No candidate specified.</div>';
+        return;
+      }
+
+      try {
+        const data = await apiCall(`/api/report/candidate/${candidateId}`);
+        renderReport(data);
+      } catch (err) {
+        document.getElementById('reportContent').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      }
+    }
+
+    function renderReport(data) {
+      const { candidate, skills, assessment, result, skill_scores, skill_matches } = data;
+      const c = candidate;
+
+      let html = '<div class="card">';
+
+      html += `
+        <div style="text-align:center;margin-bottom:32px;">
+          <h2>SKILLMATCH AI REPORT</h2>
+          <p style="color:var(--text-muted)">Assessment ID: ${assessment.id}</p>
+        </div>
+
+        <div class="report-section">
+          <h3>Candidate</h3>
+          <div style="margin-bottom:8px;"><strong>Name:</strong> ${c.name}</div>
+          <div style="margin-bottom:8px;"><strong>Email:</strong> ${c.email}</div>
+          <div style="margin-bottom:8px;"><strong>Phone:</strong> ${c.phone || 'Not found'}</div>
+          <div style="margin-bottom:8px;"><strong>Degree:</strong> ${c.degree}</div>
+          <div style="margin-bottom:8px;"><strong>Graduation Year:</strong> ${c.graduation_year}</div>
+        </div>
+      `;
+
+      html += `
+        <div class="report-section">
+          <h3>Detected Skills</h3>
+          <div>${skills.map(s => `<span class="skill-tag">${s}</span>`).join('')}</div>
+        </div>
+      `;
+
+      if (result) {
+        html += `
+          <div class="report-section">
+            <h3>Assessment</h3>
+            <div style="margin-bottom:8px;"><strong>Level:</strong> ${assessment.level} - ${assessment.level === 'Level 1' ? 'Medium' : 'Hard'}</div>
+            <div style="margin-bottom:8px;"><strong>Questions:</strong> ${result.total_questions}</div>
+            <div style="margin-bottom:8px;"><strong>Completed:</strong> ${result.correct_count}/${result.total_questions}</div>
+            <div style="margin-bottom:8px;"><strong>Overall Score:</strong> <span style="font-size:1.5rem;font-weight:800;color:var(--primary)">${result.percentage}%</span></div>
+          </div>
+        `;
+
+        html += `
+          <div class="report-section">
+            <h3>Skill Performance</h3>
+        `;
+        skill_scores.forEach(s => {
+          const color = getProgressColor(s.percentage);
+          html += `
+            <div class="skill-bar">
+              <div class="skill-label"><span>${s.skill}</span><span class="pct">${s.percentage}%</span></div>
+              <div class="progress-bar"><div class="fill ${color}" style="width:${s.percentage}%"></div></div>
+            </div>
+          `;
+        });
+        html += '</div>';
+
+        html += `
+          <div class="report-section">
+            <h3>Score Breakdown</h3>
+            <div class="grid grid-4">
+              <div class="stat-card"><div class="stat-value">${result.theory_score}</div><div class="stat-label">Theory</div></div>
+              <div class="stat-card"><div class="stat-value">${result.mcq_score}</div><div class="stat-label">MCQ</div></div>
+              <div class="stat-card"><div class="stat-value">${result.coding_score}</div><div class="stat-label">Coding</div></div>
+              <div class="stat-card"><div class="stat-value">${result.sql_score}</div><div class="stat-label">SQL</div></div>
+            </div>
+          </div>
+        `;
+
+        html += `
+          <div class="report-section">
+            <h3>AI Skill Match</h3>
+        `;
+        skill_matches.forEach(m => {
+          const cls = getMatchClass(m.match_percentage);
+          html += `
+            <div class="match-card ${cls}">
+              <div class="role-name">${m.role_name}</div>
+              <div class="match-pct">${m.match_percentage}%</div>
+            </div>
+          `;
+        });
+        html += '</div>';
+      } else {
+        html += `
+          <div class="report-section">
+            <h3>Assessment</h3>
+            <p style="color:var(--text-muted)">Assessment status: <span class="badge badge-${assessment.status === 'completed' ? 'success' : 'pending'}">${assessment.status}</span></p>
+            <p style="color:var(--text-muted)">The candidate has not completed the assessment yet.</p>
+          </div>
+        `;
+      }
+
+      html += `
+        <div class="report-note">
+          <strong>Note:</strong> The skill-match percentages are based on resume information and assessment performance.
+          Final employment decisions are made by the company/HR.
+        </div>
+      `;
+
+      html += '</div>';
+
+      html += `<div style="display:flex;gap:12px;justify-content:center;margin-top:24px;">
+        <a href="/company-dashboard.html" class="btn btn-secondary">Back to Dashboard</a>
+        <button class="btn btn-primary" onclick="window.print()">Print Report</button>
+      </div>`;
+
+      document.getElementById('reportContent').innerHTML = html;
+    }
+
+    loadReport();
+  </script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Login - SkillMatch AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/index.html" class="logo">SkillMatch<span> AI</span></a>
+      <div class="nav-links">
+        <a href="/company-login.html">Company Login</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="login-page">
+    <div class="card login-card">
+      <h2>Student / Job Seeker Login</h2>
+      <p class="subtitle">Login to take your technical assessment</p>
+
+      <div id="loginError" class="alert alert-error hidden"></div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="Your email from the resume" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Password from your invitation email" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">Login</button>
+      </form>
+
+      <div class="demo-info">
+        Use the email and password from your assessment invitation email to log in.
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/student.js"></script>
+  <script>
+    const presetEmail = getQueryParam('email');
+    if (presetEmail) {
+      document.getElementById('email').value = presetEmail;
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button');
+      showLoading(btn);
+      try {
+        const data = await apiCall('/api/auth/student/login', {
+          method: 'POST',
+          body: { email: document.getElementById('email').value, password: document.getElementById('password').value }
+        });
+        saveSession('studentSession', data);
+        if (data.candidate_id) {
+          window.location.href = `/student-dashboard.html?candidate_id=${data.candidate_id}`;
+        } else {
+          window.location.href = '/student-dashboard.html';
+        }
+      } catch (err) {
+        showError('loginError', err.message);
+      } finally {
+        hideLoading(btn);
+      }
+    });
+  </script>
+</body>
+</html>

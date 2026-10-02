@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Company Dashboard - SkillMatch AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/index.html" class="logo">SkillMatch<span> AI</span></a>
+      <div class="nav-links">
+        <a href="/upload-resume.html">Upload Resume</a>
+        <a href="/company-dashboard.html">Dashboard</a>
+        <a href="#" onclick="logout('company')">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dashboard-header">
+    <div class="container">
+      <h1>HR Dashboard</h1>
+      <p>Manage candidate assessments and review skill reports</p>
+    </div>
+  </div>
+
+  <div class="container" style="padding-top:32px;">
+    <div class="stat-grid" id="statsGrid">
+      <div class="stat-card"><div class="stat-value">-</div><div class="stat-label">Total Candidates</div></div>
+      <div class="stat-card"><div class="stat-value">-</div><div class="stat-label">Assessments Sent</div></div>
+      <div class="stat-card"><div class="stat-value">-</div><div class="stat-label">Assessments Completed</div></div>
+      <div class="stat-card"><div class="stat-value">-</div><div class="stat-label">Average Score</div></div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+      <h3>Candidates</h3>
+      <div style="display:flex;gap:12px;align-items:center;">
+        <button id="clearTestDataBtn" class="btn btn-danger" style="font-size:0.85rem;" onclick="clearTestData()">Clear Test Data</button>
+        <a href="/upload-resume.html" class="btn btn-primary">+ Upload New Resume</a>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table id="candidatesTable">
+        <thead>
+          <tr>
+            <th>Candidate</th>
+            <th>Degree</th>
+            <th>Grad Year</th>
+            <th>Phone</th>
+            <th>Skills</th>
+            <th>Level</th>
+            <th>Status</th>
+            <th>Score</th>
+            <th>Best Match</th>
+          </tr>
+        </thead>
+        <tbody id="candidatesBody">
+          <tr><td colspan="9" style="text-align:center;color:var(--text-muted)">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    checkCompanyAuth();
+
+    async function loadDashboard() {
+      try {
+        const stats = await apiCall('/api/scoring/dashboard');
+        const statElements = document.querySelectorAll('#statsGrid .stat-card');
+        statElements[0].querySelector('.stat-value').textContent = stats.total_candidates;
+        statElements[1].querySelector('.stat-value').textContent = stats.assessments_sent;
+        statElements[2].querySelector('.stat-value').textContent = stats.assessments_completed;
+        statElements[3].querySelector('.stat-value').textContent = stats.average_score + '%';
+      } catch (err) {}
+
+      try {
+        const candidates = await apiCall('/api/candidate/list/all');
+        const tbody = document.getElementById('candidatesBody');
+        if (candidates.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted)">No candidates yet. Upload a resume to get started.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = candidates.map(c => {
+          const skills = c.skills.slice(0, 4).map(s => `<span class="skill-tag">${s}</span>`).join('');
+          const statusBadge = c.assessment_status === 'completed' ? '<span class="badge badge-success">Completed</span>'
+            : c.assessment_status === 'in_progress' ? '<span class="badge badge-warning">In Progress</span>'
+            : '<span class="badge badge-pending">Pending</span>';
+          const score = c.score !== null ? `${c.score}%` : '-';
+          const match = c.best_match !== null ? `${c.best_match}%` : '-';
+          const displayVal = v => v && v !== 'Not Found' ? v : '-';
+          return `<tr onclick="window.location.href='company-report.html?candidate_id=${c.id}'">
+            <td><strong>${displayVal(c.name)}</strong><br><span style="color:var(--text-muted);font-size:0.85rem">${displayVal(c.email)}</span></td>
+            <td>${displayVal(c.degree)}</td>
+            <td>${displayVal(c.graduation_year)}</td>
+            <td>${displayVal(c.phone)}</td>
+            <td>${skills}</td>
+            <td><span class="badge badge-info">${c.level}</span></td>
+            <td>${statusBadge}</td>
+            <td>${score}</td>
+            <td>${match}</td>
+          </tr>`;
+        }).join('');
+      } catch (err) {
+        document.getElementById('candidatesBody').innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--error)">${err.message}</td></tr>`;
+      }
+    }
+
+    loadDashboard();
+
+    async function clearTestData() {
+      const confirmed = confirm('Are you sure you want to delete all candidate and assessment test data?');
+      if (!confirmed) return;
+
+      const btn = document.getElementById('clearTestDataBtn');
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span> Clearing...';
+
+      try {
+        const result = await apiCall('/api/candidate/clear-test-data', { method: 'POST' });
+        alert(result.message);
+        await loadDashboard();
+      } catch (err) {
+        alert('Failed to clear test data: ' + (err.message || 'Unknown error'));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    }
+  </script>
+</body>
+</html>

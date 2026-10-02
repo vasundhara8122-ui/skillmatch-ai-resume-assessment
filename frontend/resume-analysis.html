@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resume Analysis - SkillMatch AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/index.html" class="logo">SkillMatch<span> AI</span></a>
+      <div class="nav-links">
+        <a href="/company-dashboard.html">Dashboard</a>
+        <a href="/upload-resume.html">Upload Another</a>
+        <a href="#" onclick="logout('company')">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dashboard-header">
+    <div class="container">
+      <h1>Resume Analysis</h1>
+      <p>AI-extracted candidate information and detected skills</p>
+    </div>
+  </div>
+
+  <div class="container" style="padding-top:32px;" id="analysisContent">
+    <div class="alert alert-info"><span class="loading"></span> Loading analysis...</div>
+  </div>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    const companySession = checkCompanyAuth();
+    const candidateId = getQueryParam('candidate_id');
+    const savedCandidate = getSession('currentCandidate');
+    const savedSkills = getSession('currentSkills');
+    const savedAssessmentId = getSession('currentAssessmentId');
+
+    async function loadAnalysis() {
+      if (!companySession) return;
+      if (!candidateId) {
+        document.getElementById('analysisContent').innerHTML = '<div class="alert alert-error">No candidate specified.</div>';
+        return;
+      }
+
+      try {
+        const data = await apiCall(`/api/resume/analysis/${candidateId}`);
+        renderAnalysis(data);
+      } catch (err) {
+        if (savedCandidate && savedCandidate.id == candidateId) {
+          renderFromSession();
+        } else {
+          document.getElementById('analysisContent').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+        }
+      }
+    }
+
+    function renderFromSession() {
+      const c = savedCandidate;
+      const skills = savedSkills || [];
+      const assessmentId = savedAssessmentId;
+      const displayVal = (v, label) => v && v !== 'Not Found' ? v : `${label} not detected`;
+      document.getElementById('analysisContent').innerHTML = `
+        <div class="grid grid-2">
+          <div class="card">
+            <h3 class="mb-2">Candidate Details</h3>
+            <div style="margin-bottom:12px;"><strong>Name:</strong> ${displayVal(c.name, 'Name')}</div>
+            <div style="margin-bottom:12px;"><strong>Email:</strong> ${displayVal(c.email, 'Email')}</div>
+            <div style="margin-bottom:12px;"><strong>Phone:</strong> ${c.phone || 'Phone not detected in resume'}</div>
+            <div style="margin-bottom:12px;"><strong>Degree:</strong> ${displayVal(c.degree, 'Degree')}</div>
+            <div style="margin-bottom:12px;"><strong>Graduation Year:</strong> ${displayVal(c.graduation_year, 'Graduation year')}</div>
+            <div style="margin-bottom:12px;"><strong>Assessment Level:</strong> <span class="badge badge-info">${c.level} - ${c.level === 'Level 1' ? 'Medium' : 'Hard'}</span></div>
+          </div>
+          <div class="card">
+            <h3 class="mb-2">Detected Skills</h3>
+            ${skills.length > 0 ? `<div>${skills.map(s => `<span class="skill-tag">${s}</span>`).join('')}</div>` : '<p style="color:var(--text-muted)">No technical skills detected in this resume.</p>'}
+            <div class="mt-4">
+              <a href="/assessment-preview.html?assessment_id=${assessmentId}&candidate_id=${c.id}" class="btn btn-primary">Preview Assessment</a>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAnalysis(data) {
+      const c = data.candidate;
+      const skills = data.skills || [];
+      const assessmentId = data.assessment_id;
+      const displayVal = (v, label) => v && v !== 'Not Found' ? v : `${label} not detected`;
+      document.getElementById('analysisContent').innerHTML = `
+        <div class="grid grid-2">
+          <div class="card fade-in">
+            <h3 class="mb-2">Candidate Details</h3>
+            <div style="margin-bottom:12px;"><strong>Name:</strong> ${displayVal(c.name, 'Name')}</div>
+            <div style="margin-bottom:12px;"><strong>Email:</strong> ${displayVal(c.email, 'Email')}</div>
+            <div style="margin-bottom:12px;"><strong>Phone:</strong> ${c.phone || 'Phone not detected in resume'}</div>
+            <div style="margin-bottom:12px;"><strong>Degree:</strong> ${displayVal(c.degree, 'Degree')}</div>
+            <div style="margin-bottom:12px;"><strong>Graduation Year:</strong> ${displayVal(c.graduation_year, 'Graduation year')}</div>
+            <div style="margin-bottom:12px;"><strong>Assessment Level:</strong> <span class="badge badge-info">${c.level} - ${c.level === 'Level 1' ? 'Medium' : 'Hard'}</span></div>
+          </div>
+          <div class="card fade-in">
+            <h3 class="mb-2">Detected Skills</h3>
+            ${skills.length > 0 ? `<div>${skills.map(s => `<span class="skill-tag">${s.name}</span>`).join('')}</div>` : '<p style="color:var(--text-muted)">No technical skills detected in this resume.</p>'}
+            <div class="mt-4">
+              <a href="/assessment-preview.html?assessment_id=${assessmentId}&candidate_id=${c.id}" class="btn btn-primary">Preview Assessment</a>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    loadAnalysis();
+  </script>
+</body>
+</html>

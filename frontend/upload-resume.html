@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Resume - SkillMatch AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/index.html" class="logo">SkillMatch<span> AI</span></a>
+      <div class="nav-links">
+        <a href="/company-dashboard.html">Dashboard</a>
+        <a href="#" onclick="logout('company')">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dashboard-header">
+    <div class="container">
+      <h1>Upload Candidate Resume</h1>
+      <p>Upload a PDF or DOCX resume to begin the AI analysis</p>
+    </div>
+  </div>
+
+  <div class="container" style="padding-top:32px;">
+    <div class="card">
+      <div id="uploadArea" class="upload-area">
+        <div class="upload-icon">📄</div>
+        <h3>Drop resume here or click to browse</h3>
+        <p style="color:var(--text-muted)">Supports PDF, DOCX, and TXT files</p>
+        <input type="file" id="fileInput" accept=".pdf,.docx,.txt" style="display:none;">
+      </div>
+      <div id="uploadError" class="alert alert-error hidden"></div>
+      <div id="uploadResult"></div>
+    </div>
+  </div>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/company.js"></script>
+  <script>checkCompanyAuth();</script>
+</body>
+</html>

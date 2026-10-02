@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assessment Preview - SkillMatch AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/index.html" class="logo">SkillMatch<span> AI</span></a>
+      <div class="nav-links">
+        <a href="/company-dashboard.html">Dashboard</a>
+        <a href="#" onclick="logout('company')">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dashboard-header">
+    <div class="container">
+      <h1>Assessment Preview</h1>
+      <p>Review the assessment before sending invitation to the candidate</p>
+    </div>
+  </div>
+
+  <div class="container" style="padding-top:32px;" id="previewContent">
+    <div class="alert alert-info"><span class="loading"></span> Loading assessment...</div>
+  </div>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    const companySession = checkCompanyAuth();
+    const assessmentId = getQueryParam('assessment_id');
+    const candidateId = getQueryParam('candidate_id');
+
+    async function loadPreview() {
+      if (!companySession) return;
+      if (!assessmentId) {
+        document.getElementById('previewContent').innerHTML = '<div class="alert alert-error">No assessment found. Please upload a resume first to generate an assessment.</div>';
+        return;
+      }
+
+      try {
+        const data = await apiCall(`/api/assessment/${assessmentId}`);
+        renderPreview(data);
+      } catch (err) {
+        document.getElementById('previewContent').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      }
+    }
+
+    function renderPreview(data) {
+      const questions = data.questions;
+      const typeCount = {};
+      questions.forEach(q => {
+        const t = q.skill === 'SQL' && q.type === 'coding' ? 'sql' : q.type;
+        typeCount[t] = (typeCount[t] || 0) + 1;
+      });
+
+      let html = `
+        <div class="card mb-4">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <h3>Assessment Overview</h3>
+              <p style="color:var(--text-muted)">Level: ${data.level} - ${data.level === 'Level 1' ? 'Medium' : 'Hard'} | ${data.total_questions} Questions</p>
+            </div>
+            <button class="btn btn-success btn-lg" onclick="sendInvitation()">Send Assessment Invitation</button>
+          </div>
+        </div>
+
+        <div class="grid grid-3 mb-4">
+      `;
+      const typeLabels = { theory: 'Theory', mcq: 'MCQ', code_output: 'Code Output', debugging: 'Debugging', coding: 'Coding', sql: 'SQL' };
+      for (const [type, count] of Object.entries(typeCount)) {
+        html += `<div class="stat-card"><div class="stat-value">${count}</div><div class="stat-label">${typeLabels[type] || type}</div></div>`;
+      }
+      html += `</div>`;
+
+      html += `<div class="card"><h3 class="mb-2">Questions</h3>`;
+      questions.forEach((q, i) => {
+        html += `
+          <div class="question-card">
+            <span class="q-type q-type-${q.type}">${q.type.replace('_', ' ')} - ${q.skill}</span>
+            <div class="q-text">${q.question}</div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+
+      html += `<div id="sendResult" class="mt-4"></div>`;
+
+      document.getElementById('previewContent').innerHTML = html;
+    }
+
+    async function sendInvitation() {
+      const resultDiv = document.getElementById('sendResult');
+      resultDiv.innerHTML = '<div class="alert alert-info"><span class="loading"></span> Sending email invitation...</div>';
+      try {
+        const result = await apiCall(`/api/assessment/${assessmentId}/send-invitation`, { method: 'POST' });
+        saveSession('lastEmailResult', result);
+        window.location.href = `/email-sent.html?assessment_id=${assessmentId}&candidate_id=${candidateId}`;
+      } catch (err) {
+        resultDiv.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      }
+    }
+
+    loadPreview();
+  </script>
+</body>
+</html>
