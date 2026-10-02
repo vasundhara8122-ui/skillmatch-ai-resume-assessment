@@ -453,26 +453,40 @@ QUESTION_DISTRIBUTION = {
 def seed_questions():
     conn = get_db_connection()
     try:
-        conn.execute("DELETE FROM assessment_questions")
-        conn.execute("DELETE FROM answers")
-        conn.execute("DELETE FROM results")
-        conn.execute("DELETE FROM skill_scores")
-        conn.execute("DELETE FROM skill_matches")
-        conn.execute("DELETE FROM questions")
-        for q in QUESTION_BANK:
-            conn.execute(
-                """INSERT INTO questions (skill, type, level, question, option_a, option_b, option_c, option_d,
-                   correct_answer, reference_code, test_input, expected_output, points)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                (q["skill"], q["type"], q["level"], q["question"],
-                 q.get("option_a"), q.get("option_b"), q.get("option_c"), q.get("option_d"),
-                 q.get("correct_answer"), q.get("reference_code"), q.get("test_input"),
-                 q.get("expected_output"), 1),
-            )
-        conn.commit()
+        existing = conn.execute(
+            "SELECT COUNT(*) as c FROM questions"
+        ).fetchone()["c"]
+
+        if existing == 0:
+            for q in QUESTION_BANK:
+                conn.execute(
+                    """INSERT INTO questions (
+                        skill, type, level, question,
+                        option_a, option_b, option_c, option_d,
+                        correct_answer, reference_code,
+                        test_input, expected_output, points
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    (
+                        q["skill"],
+                        q["type"],
+                        q["level"],
+                        q["question"],
+                        q.get("option_a"),
+                        q.get("option_b"),
+                        q.get("option_c"),
+                        q.get("option_d"),
+                        q.get("correct_answer"),
+                        q.get("reference_code"),
+                        q.get("test_input"),
+                        q.get("expected_output"),
+                        1,
+                    ),
+                )
+
+            conn.commit()
     finally:
         conn.close()
-
 
 def seed_job_roles():
     conn = get_db_connection()
