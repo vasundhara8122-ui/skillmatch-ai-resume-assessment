@@ -10,8 +10,7 @@
     { "src": "/css/(.*)", "dest": "/frontend/css/$1" },
     { "src": "/js/(.*)", "dest": "/frontend/js/$1" },
     { "src": "/api/(.*)", "dest": "/api/index.py" },
-    { "src": "/([a-zA-Z0-9_-]+).html", "dest": "/frontend/$1.html" },
-    { "src": "/$", "dest": "/frontend/index.html" },
-    { "src": "/(.*)", "dest": "/api/index.py" }
+    { "src": "/(.*\\.html)", "dest": "/frontend/$1" },
+    { "src": "/", "dest": "/frontend/index.html" }
   ]
 }
