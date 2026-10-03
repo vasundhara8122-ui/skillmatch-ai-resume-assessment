@@ -1,6 +1,7 @@
 let assessmentData = null;
 let currentQuestionIndex = 0;
 let answers = {};
+let isSubmitting = false;
 
 document.addEventListener('DOMContentLoaded', async () => {
   const session = checkStudentAuth();
@@ -123,10 +124,16 @@ function runCode(questionId) {
 }
 
 async function submitAssessment() {
+  if (isSubmitting) return;
+  isSubmitting = true;
+
   const questions = assessmentData.questions;
   const unanswered = questions.filter(q => !answers[q.id] || !answers[q.id].trim());
   if (unanswered.length > 0) {
-    if (!confirm(`You have ${unanswered.length} unanswered question(s). Submit anyway?`)) return;
+    if (!confirm(`You have ${unanswered.length} unanswered question(s). Submit anyway?`)) {
+      isSubmitting = false;
+      return;
+    }
   }
 
   const payload = {
@@ -136,13 +143,15 @@ async function submitAssessment() {
     })),
   };
 
-  document.getElementById('navArea').innerHTML = '<div class="alert alert-info"><span class="loading"></span> Calculating scores...</div>';
+  const navArea = document.getElementById('navArea');
+  navArea.innerHTML = '<div class="alert alert-info"><span class="loading"></span> Submitting your answers and calculating scores. Please do not close this page...</div>';
 
   try {
     const result = await apiCall(`/api/assessment/${assessmentData.assessment_id}/submit`, { method: 'POST', body: payload });
     saveSession('lastResult', result);
     window.location.href = `/result.html?assessment_id=${assessmentData.assessment_id}`;
   } catch (err) {
-    document.getElementById('navArea').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    isSubmitting = false;
+    navArea.innerHTML = `<div class="alert alert-error">${err.message}</div><div style="margin-top:16px;display:flex;justify-content:space-between;"><button class="btn btn-secondary" onclick="showQuestion(${currentQuestionIndex})">Back to Assessment</button><button class="btn btn-success" onclick="submitAssessment()">Try Again</button></div>`;
   }
 }

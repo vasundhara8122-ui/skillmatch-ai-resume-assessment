@@ -215,10 +215,26 @@ CREATE TABLE IF NOT EXISTS email_logs (
 );
 """
 
-MIGRATION_SQL = [
-    "ALTER TABLE results ADD COLUMN IF NOT EXISTS code_output_score FLOAT DEFAULT 0",
-    "ALTER TABLE results ADD COLUMN IF NOT EXISTS debugging_score FLOAT DEFAULT 0",
+MIGRATION_CHECKS = [
+    ("results", "code_output_score", "ALTER TABLE results ADD COLUMN code_output_score FLOAT DEFAULT 0"),
+    ("results", "debugging_score", "ALTER TABLE results ADD COLUMN debugging_score FLOAT DEFAULT 0"),
+    ("results", "overall_score", "ALTER TABLE results ADD COLUMN overall_score FLOAT DEFAULT 0"),
+    ("results", "theory_score", "ALTER TABLE results ADD COLUMN theory_score FLOAT DEFAULT 0"),
+    ("results", "coding_score", "ALTER TABLE results ADD COLUMN coding_score FLOAT DEFAULT 0"),
+    ("results", "mcq_score", "ALTER TABLE results ADD COLUMN mcq_score FLOAT DEFAULT 0"),
+    ("results", "sql_score", "ALTER TABLE results ADD COLUMN sql_score FLOAT DEFAULT 0"),
+    ("results", "total_questions", "ALTER TABLE results ADD COLUMN total_questions INT DEFAULT 0"),
+    ("results", "correct_count", "ALTER TABLE results ADD COLUMN correct_count INT DEFAULT 0"),
+    ("results", "percentage", "ALTER TABLE results ADD COLUMN percentage FLOAT DEFAULT 0"),
 ]
+
+
+def _column_exists(conn, table: str, column: str) -> bool:
+    row = conn.execute(
+        "SELECT COUNT(*) as c FROM information_schema.columns WHERE table_schema = %s AND table_name = %s AND column_name = %s",
+        (DB_NAME, table, column),
+    ).fetchone()
+    return row["c"] > 0
 
 
 def init_db():
@@ -228,11 +244,9 @@ def init_db():
             stmt = statement.strip()
             if stmt:
                 conn.execute(stmt)
-        for stmt in MIGRATION_SQL:
-            try:
-                conn.execute(stmt)
-            except Exception:
-                pass
+        for table, column, ddl in MIGRATION_CHECKS:
+            if not _column_exists(conn, table, column):
+                conn.execute(ddl)
         conn.commit()
     finally:
         conn.close()

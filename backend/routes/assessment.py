@@ -49,6 +49,8 @@ def submit_assessment(assessment_id: int, data: AssessmentSubmit):
 
         db.execute("UPDATE assessments SET status = 'in_progress', started_at = CURRENT_TIMESTAMP WHERE id = %s", (assessment_id,))
 
+        db.execute("DELETE FROM answers WHERE assessment_id = %s", (assessment_id,))
+
         for answer in data.answers:
             question = db.execute("SELECT * FROM questions WHERE id = %s", (answer.question_id,)).fetchone()
             if not question:
@@ -65,13 +67,18 @@ def submit_assessment(assessment_id: int, data: AssessmentSubmit):
 
         db.execute("UPDATE assessments SET started_at = COALESCE(started_at, CURRENT_TIMESTAMP) WHERE id = %s", (assessment_id,))
         db.commit()
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Submission error: {str(e)[:100]}")
     finally:
         db.close()
 
-    scores = calculate_scores(assessment_id)
+    try:
+        scores = calculate_scores(assessment_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Score calculation error: {str(e)[:100]}")
 
     db = get_db_connection()
     try:
@@ -80,16 +87,26 @@ def submit_assessment(assessment_id: int, data: AssessmentSubmit):
             (assessment_id,),
         ).fetchone()
 
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Candidate not found for this assessment")
+
         detected_skills = [
             row["name"] for row in db.execute(
                 """SELECT s.name FROM candidate_skills cs JOIN skills s ON cs.skill_id = s.id
                    WHERE cs.candidate_id = %s""", (candidate["id"],)
             ).fetchall()
         ]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading candidate: {str(e)[:100]}")
     finally:
         db.close()
 
-    matches = calculate_skill_match(assessment_id, detected_skills)
+    try:
+        matches = calculate_skill_match(assessment_id, detected_skills)
+    except Exception as e:
+        matches = []
 
     return {
         "success": True,

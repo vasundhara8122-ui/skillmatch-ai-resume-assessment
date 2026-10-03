@@ -50,43 +50,58 @@
       }
     }
 
+    function safeNum(val) {
+      if (val === null || val === undefined || val === '' || isNaN(val)) return 0;
+      return Number(val);
+    }
+
+    function safeStr(val, fallback) {
+      if (val === null || val === undefined || val === '' || val === 'Not Found') return fallback || 'N/A';
+      return String(val);
+    }
+
     function renderReport(data) {
       const { candidate, skills, assessment, result, skill_scores, skill_matches } = data;
-      const c = candidate;
+      const c = candidate || {};
 
       let html = '<div class="card">';
 
       html += `
         <div style="text-align:center;margin-bottom:32px;">
           <h2>SKILLMATCH AI REPORT</h2>
-          <p style="color:var(--text-muted)">Assessment ID: ${assessment.id}</p>
+          <p style="color:var(--text-muted)">Assessment ID: ${assessment ? assessment.id : 'N/A'}</p>
         </div>
 
         <div class="report-section">
           <h3>Candidate</h3>
-          <div style="margin-bottom:8px;"><strong>Name:</strong> ${c.name}</div>
-          <div style="margin-bottom:8px;"><strong>Email:</strong> ${c.email}</div>
-          <div style="margin-bottom:8px;"><strong>Phone:</strong> ${c.phone || 'Not found'}</div>
-          <div style="margin-bottom:8px;"><strong>Degree:</strong> ${c.degree}</div>
-          <div style="margin-bottom:8px;"><strong>Graduation Year:</strong> ${c.graduation_year}</div>
+          <div style="margin-bottom:8px;"><strong>Name:</strong> ${safeStr(c.name, 'N/A')}</div>
+          <div style="margin-bottom:8px;"><strong>Email:</strong> ${safeStr(c.email, 'N/A')}</div>
+          <div style="margin-bottom:8px;"><strong>Phone:</strong> ${safeStr(c.phone, 'Not found')}</div>
+          <div style="margin-bottom:8px;"><strong>Degree:</strong> ${safeStr(c.degree, 'N/A')}</div>
+          <div style="margin-bottom:8px;"><strong>Graduation Year:</strong> ${safeStr(c.graduation_year, 'N/A')}</div>
         </div>
       `;
 
       html += `
         <div class="report-section">
           <h3>Detected Skills</h3>
-          <div>${skills.map(s => `<span class="skill-tag">${s}</span>`).join('')}</div>
+          <div>${(skills || []).map(s => `<span class="skill-tag">${typeof s === 'string' ? s : (s.name || 'Unknown')}</span>`).join('')}</div>
         </div>
       `;
 
       if (result) {
+        const percentage = safeNum(result.percentage);
+        const correctCount = safeNum(result.correct_count);
+        const totalQuestions = safeNum(result.total_questions);
+        const assessmentLevel = assessment ? safeStr(assessment.level, '') : '';
+
         html += `
           <div class="report-section">
             <h3>Assessment</h3>
-            <div style="margin-bottom:8px;"><strong>Level:</strong> ${assessment.level} - ${assessment.level === 'Level 1' ? 'Medium' : 'Hard'}</div>
-            <div style="margin-bottom:8px;"><strong>Questions:</strong> ${result.total_questions}</div>
-            <div style="margin-bottom:8px;"><strong>Completed:</strong> ${result.correct_count}/${result.total_questions}</div>
-            <div style="margin-bottom:8px;"><strong>Overall Score:</strong> <span style="font-size:1.5rem;font-weight:800;color:var(--primary)">${result.percentage}%</span></div>
+            <div style="margin-bottom:8px;"><strong>Level:</strong> ${assessmentLevel} - ${assessmentLevel === 'Level 1' ? 'Medium' : 'Hard'}</div>
+            <div style="margin-bottom:8px;"><strong>Questions:</strong> ${totalQuestions}</div>
+            <div style="margin-bottom:8px;"><strong>Completed:</strong> ${correctCount}/${totalQuestions}</div>
+            <div style="margin-bottom:8px;"><strong>Overall Score:</strong> <span style="font-size:1.5rem;font-weight:800;color:var(--primary)">${percentage}%</span></div>
           </div>
         `;
 
@@ -94,12 +109,13 @@
           <div class="report-section">
             <h3>Skill Performance</h3>
         `;
-        skill_scores.forEach(s => {
-          const color = getProgressColor(s.percentage);
+        (skill_scores || []).forEach(s => {
+          const pct = safeNum(s.percentage);
+          const color = getProgressColor(pct);
           html += `
             <div class="skill-bar">
-              <div class="skill-label"><span>${s.skill}</span><span class="pct">${s.percentage}%</span></div>
-              <div class="progress-bar"><div class="fill ${color}" style="width:${s.percentage}%"></div></div>
+              <div class="skill-label"><span>${safeStr(s.skill, 'Unknown')}</span><span class="pct">${pct}%</span></div>
+              <div class="progress-bar"><div class="fill ${color}" style="width:${Math.min(pct, 100)}%"></div></div>
             </div>
           `;
         });
@@ -108,34 +124,42 @@
         html += `
           <div class="report-section">
             <h3>Score Breakdown</h3>
-            <div class="grid grid-4">
-              <div class="stat-card"><div class="stat-value">${result.theory_score}</div><div class="stat-label">Theory</div></div>
-              <div class="stat-card"><div class="stat-value">${result.mcq_score}</div><div class="stat-label">MCQ</div></div>
-              <div class="stat-card"><div class="stat-value">${result.coding_score}</div><div class="stat-label">Coding</div></div>
-              <div class="stat-card"><div class="stat-value">${result.sql_score}</div><div class="stat-label">SQL</div></div>
+            <div class="stat-grid">
+              <div class="stat-card"><div class="stat-value">${safeNum(result.theory_score)}</div><div class="stat-label">Theory</div></div>
+              <div class="stat-card"><div class="stat-value">${safeNum(result.mcq_score)}</div><div class="stat-label">MCQ</div></div>
+              <div class="stat-card"><div class="stat-value">${safeNum(result.code_output_score)}</div><div class="stat-label">Code Output</div></div>
+              <div class="stat-card"><div class="stat-value">${safeNum(result.debugging_score)}</div><div class="stat-label">Debugging</div></div>
+              <div class="stat-card"><div class="stat-value">${safeNum(result.coding_score)}</div><div class="stat-label">Coding</div></div>
+              <div class="stat-card"><div class="stat-value">${safeNum(result.sql_score)}</div><div class="stat-label">SQL</div></div>
+              <div class="stat-card"><div class="stat-value">${correctCount}</div><div class="stat-label">Correct</div></div>
+              <div class="stat-card"><div class="stat-value">${totalQuestions}</div><div class="stat-label">Total</div></div>
             </div>
           </div>
         `;
 
-        html += `
-          <div class="report-section">
-            <h3>AI Skill Match</h3>
-        `;
-        skill_matches.forEach(m => {
-          const cls = getMatchClass(m.match_percentage);
+        if (skill_matches && skill_matches.length > 0) {
           html += `
-            <div class="match-card ${cls}">
-              <div class="role-name">${m.role_name}</div>
-              <div class="match-pct">${m.match_percentage}%</div>
-            </div>
+            <div class="report-section">
+              <h3>AI Skill Match</h3>
           `;
-        });
-        html += '</div>';
+          skill_matches.forEach(m => {
+            const pct = safeNum(m.match_percentage);
+            const cls = getMatchClass(pct);
+            html += `
+              <div class="match-card ${cls}">
+                <div class="role-name">${safeStr(m.role_name, 'Unknown')}</div>
+                <div class="match-pct">${pct}%</div>
+              </div>
+            `;
+          });
+          html += '</div>';
+        }
       } else {
+        const status = assessment ? safeStr(assessment.status, 'pending') : 'pending';
         html += `
           <div class="report-section">
             <h3>Assessment</h3>
-            <p style="color:var(--text-muted)">Assessment status: <span class="badge badge-${assessment.status === 'completed' ? 'success' : 'pending'}">${assessment.status}</span></p>
+            <p style="color:var(--text-muted)">Assessment status: <span class="badge badge-${status === 'completed' ? 'success' : 'pending'}">${status}</span></p>
             <p style="color:var(--text-muted)">The candidate has not completed the assessment yet.</p>
           </div>
         `;

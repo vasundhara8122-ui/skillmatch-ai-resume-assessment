@@ -187,7 +187,7 @@ def calculate_scores(assessment_id: int) -> dict:
             conn.execute(
                 """INSERT INTO skill_scores (assessment_id, skill, theory_score, coding_score, total, percentage)
                    VALUES (%s, %s, %s, %s, %s, %s)""",
-                (assessment_id, skill, theory_correct, coding_total, earned, round(percentage, 1)),
+                (assessment_id, skill, theory_correct, coding_correct, earned, round(percentage, 1)),
             )
 
         theory_score = type_scores["theory"]["correct"]
